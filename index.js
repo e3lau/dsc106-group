@@ -77,13 +77,12 @@ const foodLogs = {};
   }
 
   console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 50));
-  renderHistogram(dexcoms, foodLogs);
+  renderHistogram("id_001", dexcoms, foodLogs);
 })();
 
-
-////// Render Overlapping Histogram //////
-function renderHistogram(dexcoms, foodLogs) {
-  if (!dexcoms["id_001"] || dexcoms["id_001"].length === 0) {
+////// Render Overlapping Histogram with Tooltip and Legend //////
+function renderHistogram(person, dexcoms, foodLogs) {
+  if (!dexcoms[person] || dexcoms[person].length === 0) {
     console.error("No data available for histogram.");
     return;
   }
@@ -106,23 +105,22 @@ function renderHistogram(dexcoms, foodLogs) {
   const g = svg.append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // For this example, we will work with subject "id_001".
   // Create a mapping from day (YYYY-MM-DD) to hasStandardBreakfast flag.
-  const foodLogData = foodLogs["id_001"];
+  const foodLogData = foodLogs[person];
   const breakfastMap = {};
   foodLogData.forEach(d => {
     const day = d.date.toISOString().split("T")[0];
     breakfastMap[day] = breakfastMap[day] || d.hasStandardBreakfast;
   });
 
-  // Initialize arrays to store sums and counts for each hour for each category.
+  // Initialize arrays to store sums and counts for each hour for each category (glucose)
   const standardSums = Array(24).fill(0);
   const standardCounts = Array(24).fill(0);
   const nonStandardSums = Array(24).fill(0);
   const nonStandardCounts = Array(24).fill(0);
 
-  // Process each Dexcom reading from id_001.
-  dexcoms["id_001"].forEach(d => {
+  // Process each Dexcom reading.
+  dexcoms[person].forEach(d => {
     const readingDate = d["Timestamp (YYYY-MM-DDThh:mm:ss)"];
     const day = readingDate.toISOString().split("T")[0];
     const hour = readingDate.getHours();
@@ -138,13 +136,38 @@ function renderHistogram(dexcoms, foodLogs) {
     }
   });
 
-  // Compute average glucose per hour for both groups.
+  // --- Compute average fat consumption per hour from food log data ---
+  const standardFatSums = Array(24).fill(0);
+  const standardFatCounts = Array(24).fill(0);
+  const nonStandardFatSums = Array(24).fill(0);
+  const nonStandardFatCounts = Array(24).fill(0);
+
+  foodLogData.forEach(d => {
+      // Convert total_fat to number if possible.
+      const fat = +d.total_fat;
+      if (!isNaN(fat) && d.time_of_day) {
+         const hour = d.time_of_day.getHours();
+         if (d.logged_food === "Standard Breakfast") {
+            standardFatSums[hour] += fat;
+            standardFatCounts[hour] += 1;
+         } else {
+            nonStandardFatSums[hour] += fat;
+            nonStandardFatCounts[hour] += 1;
+         }
+      }
+  });
+
+  // Compute average values for each hour for both glucose and fat.
   const histogramData = [];
   for (let h = 0; h < 24; h++) {
     histogramData.push({
       hour: h,
+      // Glucose averages:
       standard: standardCounts[h] > 0 ? standardSums[h] / standardCounts[h] : 0,
-      nonstandard: nonStandardCounts[h] > 0 ? nonStandardSums[h] / nonStandardCounts[h] : 0
+      nonstandard: nonStandardCounts[h] > 0 ? nonStandardSums[h] / nonStandardCounts[h] : 0,
+      // Fat averages:
+      fatStandard: standardFatCounts[h] > 0 ? standardFatSums[h] / standardFatCounts[h] : 0,
+      fatNonstandard: nonStandardFatCounts[h] > 0 ? nonStandardFatSums[h] / nonStandardFatCounts[h] : 0,
     });
   }
 
@@ -161,8 +184,19 @@ function renderHistogram(dexcoms, foodLogs) {
     .nice()
     .range([usableArea.height, 0]);
 
-  // Define categories
+  // Define categories for the glucose bars
   const categories = ["standard", "nonstandard"];
+
+  // Create a tooltip div (appended to the body)
+  const tooltip = d3.select("body").append("div")
+      .attr("id", "tooltip")
+      .style("position", "absolute")
+      .style("padding", "5px")
+      .style("background", "lightgrey")
+      .style("border", "1px solid #ccc")
+      .style("border-radius", "3px")
+      .style("pointer-events", "none")
+      .style("opacity", 0);
 
   // Create groups for each hour and append overlapping bars.
   const hourGroups = g.selectAll(".hourGroup")
@@ -172,18 +206,15 @@ function renderHistogram(dexcoms, foodLogs) {
     .attr("class", "hourGroup")
     .attr("transform", d => `translate(${x0(d.hour)},0)`);
 
-  // In each hour group, create an array for both category values.
+  // In each hour group, create an array for both category values and draw the bars.
   hourGroups.each(function(d) {
-    // Create array of objects for both categories.
     const dataArray = categories.map(cat => ({ category: cat, value: d[cat] }));
-    // Sort descending so that the taller bar is drawn first (at the back).
+    // Sort descending so that the taller bar is drawn first.
     dataArray.sort((a, b) => b.value - a.value);
     
     // Check if both categories have nonzero values.
     const bothPresent = dataArray.every(obj => obj.value > 0);
     
-    // Append the bars; use the original color for the taller bar.
-    // For the top (shorter) bar, if both are present (i.e., overlapping), use grey.
     d3.select(this).selectAll("rect")
       .data(dataArray)
       .enter()
@@ -199,7 +230,27 @@ function renderHistogram(dexcoms, foodLogs) {
           return d.category === "standard" ? "steelblue" : "orange";
         }
       })
-      .attr("opacity", 1);
+      .attr("opacity", 1)
+      // Add tooltip events to each bar.
+      .on("mouseover", function(event, d_cat) {
+         // Retrieve the parent group's datum which holds the hour's full data.
+         const parentData = d3.select(this.parentNode).datum();
+         tooltip.transition().duration(200).style("opacity", 0.9);
+         tooltip.html(
+           `<strong>Hour:</strong> ${parentData.hour}:00<br/>
+            <strong>Glucose (mg/dL):</strong><br/>Standard: ${parentData.standard.toFixed(2)}<br/>Nonstandard: ${parentData.nonstandard.toFixed(2)}<br/>
+            <strong>Fat:</strong><br/>Standard: ${parentData.fatStandard.toFixed(2)}<br/>Nonstandard: ${parentData.fatNonstandard.toFixed(2)}`
+         )
+         .style("left", (event.pageX + 10) + "px")
+         .style("top", (event.pageY - 28) + "px");
+      })
+      .on("mousemove", function(event, d) {
+         tooltip.style("left", (event.pageX + 10) + "px")
+                .style("top", (event.pageY - 28) + "px");
+      })
+      .on("mouseout", function(event, d) {
+         tooltip.transition().duration(500).style("opacity", 0);
+      });
   });
 
   // Add x-axis (hours) and y-axis (average glucose).
@@ -209,4 +260,34 @@ function renderHistogram(dexcoms, foodLogs) {
 
   g.append("g")
     .call(d3.axisLeft(y));
+
+  // --- Add an offset legend ---
+  // Position the legend towards the top-right of the SVG.
+  const legend = svg.append("g")
+      .attr("transform", `translate(${width - 150},${margin.top})`);
+
+  const legendData = [
+      { label: "Standard", color: "steelblue" },
+      { label: "Nonstandard", color: "orange" }
+  ];
+
+  legend.selectAll("rect")
+      .data(legendData)
+      .enter()
+      .append("rect")
+      .attr("x", 0)
+      .attr("y", (d, i) => i * 25)
+      .attr("width", 20)
+      .attr("height", 20)
+      .attr("fill", d => d.color);
+
+  legend.selectAll("text")
+      .data(legendData)
+      .enter()
+      .append("text")
+      .attr("x", 30)
+      .attr("y", (d, i) => i * 25 + 15)
+      .text(d => d.label)
+      .attr("font-size", "14px")
+      .attr("fill", "#000");
 }
