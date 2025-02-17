@@ -23,6 +23,10 @@ async function loadCSV(filePath) {
     dexcoms[`id_${id}`] = data;
   }
   console.log("Dexcom id_001 head:", dexcoms["id_001"].slice(0, 5));
+<<<<<<< Updated upstream
+=======
+  console.log("Dexcom id_001 head:", dexcoms["id_001"][0]);
+>>>>>>> Stashed changes
 
   // Load Food Logs
   const foodLogs = {};
@@ -56,6 +60,7 @@ async function loadCSV(filePath) {
 
 ////// Build Histogram //////
 function renderHistogram(dexcoms, foodLogs) {
+<<<<<<< Updated upstream
     // Set up dimensions
     const width = 1000;
     const height = 600;
@@ -134,3 +139,92 @@ function renderHistogram(dexcoms, foodLogs) {
     svg.append("g")
         .call(d3.axisLeft(y));
 }
+=======
+  // Set up dimensions
+  const width = 1000;
+  const height = 600;
+  const margin = { top: 10, right: 10, bottom: 30, left: 20 };
+  const usableArea = {
+      top: margin.top,
+      right: width - margin.right,
+      bottom: height - margin.bottom,
+      left: margin.left,
+      width: width - margin.left - margin.right,
+      height: height - margin.top - margin.bottom,
+  };
+  
+  // Append SVG element
+  const svg = d3.select('#chart')
+    .append('svg')
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .style('overflow', 'visible');
+
+  // Update: Use d.glucose if that's your property
+  const x = d3.scaleLinear()
+      .domain([0, d3.max(dexcoms['id_001'], d => d)]) // Data range
+      .range([0, usableArea.width]);
+
+  // Create histogram bins using d.glucose
+  const histogram = d3.histogram()
+      .value(d => d.glucose)
+      .domain(x.domain())
+      .thresholds(x.ticks(24)); // 24 bins
+
+  const bins = histogram(dexcoms['id_001']);
+
+  // Group data by bin and (later) by category.
+  // For now, if you haven't defined categories, this part might be adjusted.
+  const binGroups = bins.map(bin => {
+      let counts = { bin: bin.x0 };
+      // Assuming d.category exists. Otherwise, define your categories here.
+      bin.forEach(d => { 
+          counts[d.category] = (counts[d.category] || 0) + 1;
+      });
+      return counts;
+  });  // <-- Added closing parenthesis here
+
+  // Create a stack generator.
+  // If testing only with id_001, stacking by individual IDs might not work.
+  // Instead, decide on a relevant categorical key (e.g., "standard" vs. "non-standard").
+  const stack = d3.stack()
+      .keys(Object.keys(dexcoms)) // This will later be replaced with your chosen categorical keys
+      .value((d, key) => d[key] || 0);
+
+  const stackedData = stack(binGroups);
+
+  // Y Scale based on stacked data
+  const y = d3.scaleLinear()
+      .domain([0, d3.max(stackedData, d => d3.max(d, d => d[1]))])
+      .range([usableArea.height, 0]);
+
+  // Color scale for different categories (or individuals)
+  const color = d3.scaleOrdinal()
+      .domain(Object.keys(dexcoms))
+      .range(d3.schemeCategory10);
+
+  // Append stacked bars
+  svg.selectAll("g.layer")
+      .data(stackedData)
+      .enter().append("g")
+      .attr("class", "layer")
+      .attr("fill", d => color(d.key))
+      .selectAll("rect")
+      .data(d => d)
+      .enter().append("rect")
+      .attr("x", d => x(d.data.bin))
+      .attr("y", d => y(d[1]))
+      .attr("height", d => y(d[0]) - y(d[1]))
+      .attr("width", usableArea.width / bins.length - 2);
+
+  // Add X-axis
+  svg.append("g")
+      .attr("transform", `translate(0,${usableArea.height})`)
+      .call(d3.axisBottom(x));
+
+  // Add Y-axis
+  svg.append("g")
+      .call(d3.axisLeft(y));
+}
+
+renderHistogram(dexcoms, foodLogs)
+>>>>>>> Stashed changes
