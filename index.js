@@ -75,6 +75,9 @@ const foodLogs = {};
 
   console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 50));
   renderHistogram("id_016", dexcoms, foodLogs);
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 })();
 
