@@ -6,6 +6,8 @@ async function loadCSV(filePath) {
 
 const dexcoms = {};
 const foodLogs = {};
+const formatDate = d3.timeFormat("%Y-%m-%d");
+const formatHour = d3.timeFormat("%H");
 
 (async () => {
   const demographics = await loadCSV("data/Demographics.csv");
@@ -19,9 +21,8 @@ const foodLogs = {};
     data = data.slice(12);
     data.forEach(row => {
       delete row["Index"];
-      row["Timestamp (YYYY-MM-DDThh:mm:ss)"] = new Date(row["Timestamp (YYYY-MM-DDThh:mm:ss)"]);
-      // Save the date string (YYYY-MM-DD) for later joining
-      row.date = row["Timestamp (YYYY-MM-DDThh:mm:ss)"].toISOString().split("T")[0];
+      let parsedDateTime = Date.parse(row["Timestamp (YYYY-MM-DDThh:mm:ss)"]);
+      row["Timestamp (YYYY-MM-DDThh:mm:ss)"] = new Date(parsedDateTime);
       row["Glucose Value (mg/dL)"] = +row["Glucose Value (mg/dL)"];
     });
     dexcoms[`id_${id}`] = data;
@@ -46,13 +47,16 @@ const foodLogs = {};
       });
 
       // Use Date.parse() to handle inconsistent date formats
+      /*
       let parsedDate = Date.parse(newRow.date);
       newRow.date = isNaN(parsedDate) ? new Date() : new Date(parsedDate);
+      */
 
       let parsedTimeBegin = Date.parse(newRow.time_begin);
       newRow.time_begin = isNaN(parsedTimeBegin) ? null : new Date(parsedTimeBegin);
 
       // For time_of_day, if available, assume it's a time string; otherwise fallback to time_begin.
+      /*
       if (newRow.time_of_day) {
          newRow.time_of_day = new Date(`1970-01-01T${newRow.time_of_day}`);
       } else if (newRow.time_begin) {
@@ -60,28 +64,32 @@ const foodLogs = {};
       } else {
          newRow.time_of_day = null;
       }
+      */
       
       return newRow;
     });
     foodLogs[`id_${id}`] = data;
   }
+
+  console.log(formatDate(foodLogs['id_005'][0].time_begin));
+  console.log(formatHour(foodLogs['id_005'][0].time_begin));
   
   // For each subject’s food logs, group by day and set a new boolean flag,
   // hasStandardBreakfast, to true if any entry on that day has "Standard Breakfast"
-  const breakfastOptions = ["standard breakfast", "std breakfast", "corn flakes"];
+  const breakfastOptions = ["standard breakfast", "std breakfast", "frosted flakes", "corn flakes"];
   
   for (let id in foodLogs) {
-    const groups = d3.group(foodLogs[id], d => d.date.toISOString().split("T")[0]);
+    const groups = d3.group(foodLogs[id], d => formatDate(d.time_begin));
     groups.forEach((rows, day) => {
-    const hasBreakfast = rows.some(d => 
-      breakfastOptions.includes(d.logged_food.toLowerCase())
-    );
-    rows.forEach(d => d.hasStandardBreakfast = hasBreakfast);
-  });
+      const hasBreakfast = rows.some(d => 
+        breakfastOptions.includes(d.logged_food.toLowerCase())
+      );
+      rows.forEach(d => d.hasStandardBreakfast = hasBreakfast);
+    });
   }
 
-  console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 50));
-  renderHistogram("id_001", dexcoms, foodLogs);
+  console.log("Food Log id_001 head:", foodLogs["id_015"].slice(0, 50));
+  renderHistogram("id_016", dexcoms, foodLogs);
 })();
 
 ////// Render Overlapping Histogram with Tooltip and Legend //////
@@ -113,7 +121,7 @@ function renderHistogram(person, dexcoms, foodLogs) {
   const foodLogData = foodLogs[person];
   const breakfastMap = {};
   foodLogData.forEach(d => {
-    const day = d.date.toISOString().split("T")[0];
+    const day = formatDate(d.time_begin);
     breakfastMap[day] = breakfastMap[day] || d.hasStandardBreakfast;
   });
 
@@ -126,8 +134,8 @@ function renderHistogram(person, dexcoms, foodLogs) {
   // Process each Dexcom reading.
   dexcoms[person].forEach(d => {
     const readingDate = d["Timestamp (YYYY-MM-DDThh:mm:ss)"];
-    const day = readingDate.toISOString().split("T")[0];
-    const hour = readingDate.getHours();
+    const day = formatDate(readingDate);
+    const hour = formatHour(readingDate);
     const glucose = +d["Glucose Value (mg/dL)"];
     if (!isNaN(glucose)) {
       if (breakfastMap[day]) {
@@ -149,9 +157,9 @@ function renderHistogram(person, dexcoms, foodLogs) {
   foodLogData.forEach(d => {
       // Convert total_fat to number if possible.
       const fat = +d.total_fat;
-      if (!isNaN(fat) && d.time_of_day) {
-         const hour = d.time_of_day.getHours();
-         if (d.logged_food === "Standard Breakfast") {
+      if (!isNaN(fat) && d.time_begin) {
+         const hour = formatHour(d.time_begin);
+         if (d.hasStandardBreakfast) {
             standardFatSums[hour] += fat;
             standardFatCounts[hour] += 1;
          } else {
