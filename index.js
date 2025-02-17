@@ -45,16 +45,35 @@ const foodLogs = {};
         newRow[key] = oldValues[index];
       });
 
-      newRow.date = new Date(newRow.date);
+      let parsedDate = Date.parse(newRow.date);
+      newRow.date = isNaN(parsedDate) ? new Date() : new Date(parsedDate);
 
-      const timeStr = newRow.time_of_day ? newRow.time_of_day : newRow.time_begin;
-      newRow.time_of_day = timeStr ? new Date(`1970-01-01T${timeStr}`) : null;
-      newRow.time_begin = new Date(newRow.time_begin);
+      let parsedTimeBegin = Date.parse(newRow.time_begin);
+      newRow.time_begin = isNaN(parsedTimeBegin) ? null : new Date(parsedTimeBegin);
+
+      if (newRow.time_of_day) {
+         newRow.time_of_day = new Date(`1970-01-01T${newRow.time_of_day}`);
+      } else if (newRow.time_begin) {
+         newRow.time_of_day = newRow.time_begin;
+      } else {
+         newRow.time_of_day = null;
+      }
+      
       return newRow;
     });
     foodLogs[`id_${id}`] = data;
   }
-  console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 5));
+  
+  for (let id in foodLogs) {
+    const groups = d3.group(foodLogs[id], d => d.date.toISOString().split("T")[0]);
+    
+    groups.forEach((rows, day) => {
+      const hasBreakfast = rows.some(d => d.logged_food === "Standard Breakfast");
+      rows.forEach(d => d.hasStandardBreakfast = hasBreakfast);
+    });
+  }
+
+  console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 50));
   renderHistogram(dexcoms, foodLogs)
 })();
 
