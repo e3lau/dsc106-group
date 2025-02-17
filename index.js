@@ -73,27 +73,44 @@ const formatHour = d3.timeFormat("%H");
   }
 
   console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 50));
-  renderHistogram("id_001", dexcoms, foodLogs);
+  renderHistogram(["id_001","id_002","id_010"], dexcoms, foodLogs);
 })();
 
 ////// Render Overlapping Histogram with Tooltip and Legend //////
-function renderHistogram(person, dexcoms, foodLogs) {
-    /// Error Catcher if data does not exist for person id
-    if (!dexcoms[person] || dexcoms[person].length === 0) {
-        console.error("No data available for histogram.");
-        
-        let chartsContainer = document.getElementById("chart");
-        if (chartsContainer) {
-          const placeholderMessage = document.createElement('p');
-          placeholderMessage.textContent = 'No data available for this person id!';
-          placeholderMessage.style.color = 'red';
-          chartsContainer.appendChild(placeholderMessage);
-        } else {
-          console.warn("Chart container not found.");
-        }
-      
-        return;
+function renderHistogram(persons, dexcoms, foodLogs) {
+  if (!Array.isArray(persons)) {
+      console.error("Input must be an array of person IDs.");
+      return;
+  }
+
+  let combinedDexcomData = [];
+  let combinedFoodLogData = [];
+
+  persons.forEach(person => {
+      if (dexcoms[person]) {
+          combinedDexcomData = combinedDexcomData.concat(dexcoms[person]);
       }
+      if (foodLogs[person]) {
+          combinedFoodLogData = combinedFoodLogData.concat(foodLogs[person]);
+      }
+  });
+
+  /// Error Catcher if data does not exist for person id
+  if (combinedDexcomData.length === 0) {
+    console.error("No data available for histogram.");
+    
+    let chartsContainer = document.getElementById("chart");
+    if (chartsContainer) {
+      const placeholderMessage = document.createElement('p');
+      placeholderMessage.textContent = 'No data available for this person id!';
+      placeholderMessage.style.color = 'red';
+      chartsContainer.appendChild(placeholderMessage);
+    } else {
+      console.warn("Chart container not found.");
+    }
+  
+    return;
+  }
 
   // Set up dimensions and margins
   const width = 1000;
@@ -119,7 +136,7 @@ function renderHistogram(person, dexcoms, foodLogs) {
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
   // Create a mapping from day (YYYY-MM-DD) to hasStandardBreakfast flag.
-  const foodLogData = foodLogs[person];
+  const foodLogData = combinedFoodLogData;
   const breakfastMap = {};
   foodLogData.forEach(d => {
     const day = formatDate(d.time_begin);
@@ -133,7 +150,7 @@ function renderHistogram(person, dexcoms, foodLogs) {
   const nonStandardCounts = Array(24).fill(0);
 
   // Process each Dexcom reading.
-  dexcoms[person].forEach(d => {
+  combinedDexcomData.forEach(d => {
     const readingDate = d["Timestamp (YYYY-MM-DDThh:mm:ss)"];
     const day = formatDate(readingDate);
     const hour = +formatHour(readingDate); // Convert to number
