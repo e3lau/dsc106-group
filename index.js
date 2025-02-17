@@ -60,6 +60,11 @@ const foodLogs = {};
 
 ////// Build Histogram //////
 function renderHistogram(dexcoms, foodLogs) {
+    if (!dexcoms["id_001"] || dexcoms["id_001"].length === 0) {
+        console.error("No data available for histogram.");
+        return;
+    }
+
   // Set up dimensions
   const width = 1000;
   const height = 600;
@@ -87,57 +92,28 @@ function renderHistogram(dexcoms, foodLogs) {
     })])
     .range([0, usableArea.width]);
 
-  // Create histogram bins using d.glucose
+  // Create histogram bins
   const histogram = d3.histogram()
-      .value(d => d.glucose)
+      .value(d => d["Glucose Value (mg/dL)"])
       .domain(x.domain())
-      .thresholds(x.ticks(24)); // 24 bins
+      .thresholds(x.ticks(20)); // 20 bins
 
   const bins = histogram(dexcoms['id_001']);
 
-  // Group data by bin and (later) by category.
-  // For now, if you haven't defined categories, this part might be adjusted.
-  const binGroups = bins.map(bin => {
-      let counts = { bin: bin.x0 };
-      // Assuming d.category exists. Otherwise, define your categories here.
-      bin.forEach(d => { 
-          counts[d.category] = (counts[d.category] || 0) + 1;
-      });
-      return counts;
-  });  // <-- Added closing parenthesis here
-
-  // Create a stack generator.
-  // If testing only with id_001, stacking by individual IDs might not work.
-  // Instead, decide on a relevant categorical key (e.g., "standard" vs. "non-standard").
-  const stack = d3.stack()
-      .keys(Object.keys(dexcoms)) // This will later be replaced with your chosen categorical keys
-      .value((d, key) => d[key] || 0);
-
-  const stackedData = stack(binGroups);
-
-  // Y Scale based on stacked data
+  // Y scale
   const y = d3.scaleLinear()
-      .domain([0, d3.max(stackedData, d => d3.max(d, d => d[1]))])
+      .domain([0, d3.max(bins, d => d.length)])
       .range([usableArea.height, 0]);
 
-  // Color scale for different categories (or individuals)
-  const color = d3.scaleOrdinal()
-      .domain(Object.keys(dexcoms))
-      .range(d3.schemeCategory10);
-
-  // Append stacked bars
-  svg.selectAll("g.layer")
-      .data(stackedData)
-      .enter().append("g")
-      .attr("class", "layer")
-      .attr("fill", d => color(d.key))
-      .selectAll("rect")
-      .data(d => d)
+  // Append bars
+  svg.selectAll("rect")
+      .data(bins)
       .enter().append("rect")
-      .attr("x", d => x(d.data.bin))
-      .attr("y", d => y(d[1]))
-      .attr("height", d => y(d[0]) - y(d[1]))
-      .attr("width", usableArea.width / bins.length - 2);
+      .attr("x", d => x(d.x0))
+      .attr("y", d => y(d.length))
+      .attr("width", usableArea.width / bins.length - 2)
+      .attr("height", d => usableArea.height - y(d.length))
+      .attr("fill", "steelblue");
 
   // Add X-axis
   svg.append("g")
