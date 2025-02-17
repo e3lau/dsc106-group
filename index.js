@@ -55,6 +55,7 @@ const foodLogs = {};
     foodLogs[`id_${id}`] = data;
   }
   console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 5));
+  renderHistogram(dexcoms, foodLogs)
 })();
 
 ////// Build Histogram //////
@@ -80,8 +81,11 @@ function renderHistogram(dexcoms, foodLogs) {
 
   // Update: Use d.glucose if that's your property
   const x = d3.scaleLinear()
-      .domain([0, d3.max(dexcoms['id_001'], d => d)]) // Data range
-      .range([0, usableArea.width]);
+    .domain([0, d3.max(dexcoms["id_001"], d => {
+        const glucose = +d["Glucose Value (mg/dL)"];
+        return isNaN(glucose) ? 0 : glucose; // Replace NaN with 0
+    })])
+    .range([0, usableArea.width]);
 
   // Create histogram bins using d.glucose
   const histogram = d3.histogram()
@@ -145,4 +149,3 @@ function renderHistogram(dexcoms, foodLogs) {
       .call(d3.axisLeft(y));
 }
 
-renderHistogram(dexcoms, foodLogs)
