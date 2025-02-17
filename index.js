@@ -54,7 +54,28 @@ const foodLogs = {};
     });
     foodLogs[`id_${id}`] = data;
   }
+<<<<<<< Updated upstream
   console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 5));
+=======
+  
+  // For each subject’s food logs, group by day and set a new boolean flag,
+  // hasStandardBreakfast, to true if any entry on that day has "Standard Breakfast"
+  const breakfastOptions = ["standard breakfast", "std breakfast", 
+    "corn flakes", "frosted flakes", "cornflakes", "std bfast", "frosted flake"];
+  
+  for (let id in foodLogs) {
+    const groups = d3.group(foodLogs[id], d => d.date.toISOString().split("T")[0]);
+    groups.forEach((rows, day) => {
+    const hasBreakfast = rows.some(d => 
+      breakfastOptions.includes(d.logged_food.toLowerCase())
+    );
+    rows.forEach(d => d.hasStandardBreakfast = hasBreakfast);
+  });
+  }
+
+  console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 50));
+  renderHistogram("id_016", dexcoms, foodLogs);
+>>>>>>> Stashed changes
 })();
 
 
