@@ -53,3 +53,84 @@ async function loadCSV(filePath) {
   }
   console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 5));
 })();
+
+////// Build Histogram //////
+function renderHistogram(dexcoms, foodLogs) {
+    // Set up dimensions
+    const width = 1000;
+    const height = 600;
+    const margin = { top: 10, right: 10, bottom: 30, left: 20 };
+    const usableArea = {
+        top: margin.top,
+        right: width - margin.right,
+        bottom: height - margin.bottom,
+        left: margin.left,
+        width: width - margin.left - margin.right,
+        height: height - margin.top - margin.bottom,
+      };
+    
+    // Define X scale (linear for histogram)
+    const svg = d3
+      .select('#chart')
+      .append('svg')
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .style('overflow', 'visible');
+
+    // Define X scale (linear for histogram)
+    const x = d3.scaleLinear()
+        .domain([0, d3.max(dexcoms['id_001'], d => d.value)]) // Data range
+        .range([0, width]);
+
+    // Create histogram bins
+    const histogram = d3.histogram()
+        .value(d => d.value) // Access the value
+        .domain(x.domain()) // Same domain as X-axis
+        .thresholds(x.ticks(24)); // 24 bins
+
+    const bins = histogram(dexcoms['id_001']);
+
+    // Group data by bin and category
+    const binGroups = bins.map(bin => {
+        let counts = { bin: bin.x0 };
+        bin.forEach(d => counts[d.category] = (counts[d.category] || 0) + 1);
+        return counts;
+
+    // Stack the grouped data
+    const stack = d3.stack()
+        .keys(Object.keys(dexcoms)) // All IDs
+        .value((d, key) => d[key] || 0); // Default 0 if missing
+
+    const stackedData = stack(binGroups);
+
+    // Y Scale
+    const y = d3.scaleLinear()
+        .domain([0, d3.max(stackedData, d => d3.max(d, d => d[1]))])
+        .range([height, 0]);
+
+    // Color scale
+    const color = d3.scaleOrdinal()
+        .domain(Object.keys(dexcoms))
+        .range(d3.schemeCategory10); // Predefined D3 colors
+
+    // Append bars (stacked)
+    svg.selectAll("g")
+        .data(stackedData)
+        .enter().append("g")
+        .attr("fill", d => color(d.key))
+        .selectAll("rect")
+        .data(d => d)
+        .enter().append("rect")
+        .attr("x", d => x(d.data.bin))
+        .attr("y", d => y(d[1]))
+        .attr("height", d => y(d[0]) - y(d[1]))
+        .attr("width", width / bins.length - 2);
+
+    // X-axis
+    svg.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(x));
+
+    // Y-axis
+    svg.append("g")
+        .call(d3.axisLeft(y));
+}
