@@ -4,12 +4,14 @@ async function loadCSV(filePath) {
   return await d3.csv(filePath);
 }
 
+const dexcoms = {};
+const foodLogs = {};
+
 (async () => {
   const demographics = await loadCSV("data/Demographics.csv");
   console.log("Demographics head:", demographics.slice(0, 5));
 
   // Load Dexcom data
-  const dexcoms = {};
   for (let i = 1; i <= 16; i++) {
     if (i === 3) continue;
     const id = i.toString().padStart(3, "0");
@@ -25,7 +27,6 @@ async function loadCSV(filePath) {
   console.log("Dexcom id_001 head:", dexcoms["id_001"].slice(0, 5));
 
   // Load Food Logs
-  const foodLogs = {};
   for (let i = 1; i <= 16; i++) {
     if (i === 3) continue;
     const id = i.toString().padStart(3, "0");
@@ -54,83 +55,100 @@ async function loadCSV(filePath) {
   console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 5));
 })();
 
+
+
+
+
+
 ////// Build Histogram //////
 function renderHistogram(dexcoms, foodLogs) {
-    // Set up dimensions
-    const width = 1000;
-    const height = 600;
-    const margin = { top: 10, right: 10, bottom: 30, left: 20 };
-    const usableArea = {
-        top: margin.top,
-        right: width - margin.right,
-        bottom: height - margin.bottom,
-        left: margin.left,
-        width: width - margin.left - margin.right,
-        height: height - margin.top - margin.bottom,
-      };
-    
-    // Define X scale (linear for histogram)
-    const svg = d3
-      .select('#chart')
-      .append('svg')
-      .attr('viewBox', `0 0 ${width} ${height}`)
-      .style('overflow', 'visible');
+  // Aggregate all Dexcom data from every person into one array.
+  const allData = Object.values(dexcoms).flat();
+  
+  // Convert sensor glucose readings to numbers.
+  // Make sure the column header matches exactly what is in your CSV.
+  allData.forEach(d => {
+    d.glucose = +d["Sensor Glucose (mg/dL)"];
+  });
 
-    // Define X scale (linear for histogram)
-    const x = d3.scaleLinear()
-        .domain([0, d3.max(dexcoms['id_001'], d => d.value)]) // Data range
-        .range([0, width]);
+  // Set up dimensions and margins.
+  const width = 1000;
+  const height = 600;
+  const margin = { top: 10, right: 10, bottom: 30, left: 20 };
+  const usableWidth = width - margin.left - margin.right;
+  const usableHeight = height - margin.top - margin.bottom;
 
-    // Create histogram bins
-    const histogram = d3.histogram()
-        .value(d => d.value) // Access the value
-        .domain(x.domain()) // Same domain as X-axis
-        .thresholds(x.ticks(24)); // 24 bins
+  // Create the SVG container inside the #chart element.
+  const svg = d3
+    .select('#chart')
+    .append('svg')
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .style('overflow', 'visible')
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    const bins = histogram(dexcoms['id_001']);
+  // Define the X scale based on aggregated glucose values.
+  const x = d3.scaleLinear()
+      .domain([0, d3.max(allData, d => d.glucose)])
+      .range([0, usableWidth]);
 
-    // Group data by bin and category
-    const binGroups = bins.map(bin => {
-        let counts = { bin: bin.x0 };
-        bin.forEach(d => counts[d.category] = (counts[d.category] || 0) + 1);
-        return counts;
+  // Create histogram bins for the glucose values (24 bins).
+  const histogram = d3.histogram()
+      .value(d => d.glucose)
+      .domain(x.domain())
+      .thresholds(x.ticks(24));
 
-    // Stack the grouped data
-    const stack = d3.stack()
-        .keys(Object.keys(dexcoms)) // All IDs
-        .value((d, key) => d[key] || 0); // Default 0 if missing
+  const bins = histogram(allData);
 
-    const stackedData = stack(binGroups);
+  // Group data by bin: count "standard" (glucose <= 140) and "nonStandard" (> 140).
+  const binGroups = bins.map(bin => {
+    let counts = { bin: bin.x0, standard: 0, nonStandard: 0 };
+    bin.forEach(d => {
+      if (d.glucose <= 140) counts.standard++;
+      else counts.nonStandard++;
+    });
+    return counts;
+  });
 
-    // Y Scale
-    const y = d3.scaleLinear()
-        .domain([0, d3.max(stackedData, d => d3.max(d, d => d[1]))])
-        .range([height, 0]);
+  // Stack the grouped data based on the keys "standard" and "nonStandard".
+  const stack = d3.stack()
+      .keys(["standard", "nonStandard"]);
 
-    // Color scale
-    const color = d3.scaleOrdinal()
-        .domain(Object.keys(dexcoms))
-        .range(d3.schemeCategory10); // Predefined D3 colors
+  const stackedData = stack(binGroups);
 
-    // Append bars (stacked)
-    svg.selectAll("g")
-        .data(stackedData)
-        .enter().append("g")
-        .attr("fill", d => color(d.key))
-        .selectAll("rect")
-        .data(d => d)
-        .enter().append("rect")
-        .attr("x", d => x(d.data.bin))
-        .attr("y", d => y(d[1]))
-        .attr("height", d => y(d[0]) - y(d[1]))
-        .attr("width", width / bins.length - 2);
+  // Define the Y scale based on the maximum stacked value.
+  const y = d3.scaleLinear()
+      .domain([0, d3.max(stackedData, series => d3.max(series, d => d[1]))])
+      .range([usableHeight, 0]);
 
-    // X-axis
-    svg.append("g")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x));
+  // Define a color scale for the two categories.
+  const color = d3.scaleOrdinal()
+      .domain(["standard", "nonStandard"])
+      .range(d3.schemeCategory10);
 
-    // Y-axis
-    svg.append("g")
-        .call(d3.axisLeft(y));
+  // Append the stacked bars.
+  svg.selectAll("g.layer")
+      .data(stackedData)
+      .enter().append("g")
+      .attr("class", "layer")
+      .attr("fill", d => color(d.key))
+      .selectAll("rect")
+      .data(d => d)
+      .enter().append("rect")
+      .attr("x", d => x(d.data.bin))
+      .attr("y", d => y(d[1]))
+      .attr("height", d => y(d[0]) - y(d[1]))
+      .attr("width", (usableWidth / bins.length) - 2);
+
+  // Append the X-axis.
+  svg.append("g")
+      .attr("transform", `translate(0,${usableHeight})`)
+      .call(d3.axisBottom(x));
+
+  // Append the Y-axis.
+  svg.append("g")
+      .call(d3.axisLeft(y));
 }
+
+// Default call: Render the histogram using data from all participants.
+renderHistogram(dexcoms, foodLogs);
