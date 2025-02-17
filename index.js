@@ -4,8 +4,8 @@ async function loadCSV(filePath) {
   return await d3.csv(filePath);
 }
 
-/// Currupted Data Skip
-const skipIds = [3, 7, 13, 15, 16];
+/// Corrupted Data Skip
+const skipIDs = [3, 7, 13, 15, 16];
 
 const dexcoms = {};
 const foodLogs = {};
@@ -18,7 +18,7 @@ const formatHour = d3.timeFormat("%H");
 
   // Load Dexcom data
   for (let i = 1; i <= 16; i++) {
-    if (skipIds.includes(i)) continue;
+    if (skipIDs.includes(i)) continue;
     const id = i.toString().padStart(3, "0");
     let data = await loadCSV(`data/dexcom/Dexcom_${id}.csv`);
     data = data.slice(12);
@@ -34,7 +34,7 @@ const formatHour = d3.timeFormat("%H");
 
   // Load Food Logs
   for (let i = 1; i <= 16; i++) {
-    if (skipIds.includes(i)) continue;
+    if (skipIDs.includes(i)) continue;
     const id = i.toString().padStart(3, "0");
     let data = await loadCSV(`data/food_log/Food_Log_${id}.csv`);
     
@@ -115,7 +115,7 @@ function renderHistogram(persons, dexcoms, foodLogs) {
   // Set up dimensions and margins
   const width = 1000;
   const height = 600;
-  const margin = { top: 10, right: 10, bottom: 30, left: 20 };
+  const margin = { top: 10, right: 10, bottom: 30, left: 30 };
   const usableArea = {
     top: margin.top,
     right: width - margin.right,
