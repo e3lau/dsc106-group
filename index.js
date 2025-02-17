@@ -84,44 +84,56 @@ function renderHistogram(dexcoms, foodLogs) {
     .attr('viewBox', `0 0 ${width} ${height}`)
     .style('overflow', 'visible');
 
-  // Update: Use d.glucose if that's your property
-  const x = d3.scaleLinear()
-    .domain([0, d3.max(dexcoms["id_001"], d => {
-        const glucose = +d["Glucose Value (mg/dL)"];
-        return isNaN(glucose) ? 0 : glucose; // Replace NaN with 0
-    })])
-    .range([0, usableArea.width]);
+  // Initialize data structures for sum and count
+  const glucoseSums = Array(24).fill(0);
+  const glucoseCounts = Array(24).fill(0);
 
-  // Create histogram bins
-  const histogram = d3.histogram()
-      .value(d => d["Glucose Value (mg/dL)"])
-      .domain(x.domain())
-      .thresholds(x.ticks(20)); // 20 bins
+  // Process each data point
+  dexcoms["id_001"].forEach(d => {
+    const hour = new Date(d["Timestamp (YYYY-MM-DDThh:mm:ss)"]).getHours();
+    const glucose = +d["Glucose Value (mg/dL)"];
+    
+    if (!isNaN(glucose)) {
+      glucoseSums[hour] += glucose;
+      glucoseCounts[hour] += 1;
+    }
+  });
 
-  const bins = histogram(dexcoms['id_001']);
+  // Compute average glucose per hour
+  const histogramData = glucoseSums.map((sum, hour) => ({
+    hour,
+    avgGlucose: glucoseCounts[hour] > 0 ? sum / glucoseCounts[hour] : 0
+  }));
 
-  // Y scale
+  // X Scale (Hours of the day)
+  const x = d3.scaleBand()
+    .domain(histogramData.map(d => d.hour))
+    .range([0, usableArea.width])
+    .padding(0.1);
+
+  // Y Scale (Average glucose values)
   const y = d3.scaleLinear()
-      .domain([0, d3.max(bins, d => d.length)])
-      .range([usableArea.height, 0]);
+    .domain([0, d3.max(histogramData, d => d.avgGlucose) || 200])
+    .range([usableArea.height, 0]);
 
   // Append bars
-  svg.selectAll("rect")
-      .data(bins)
-      .enter().append("rect")
-      .attr("x", d => x(d.x0))
-      .attr("y", d => y(d.length))
-      .attr("width", usableArea.width / bins.length - 2)
-      .attr("height", d => usableArea.height - y(d.length))
-      .attr("fill", "steelblue");
-
-  // Add X-axis
   svg.append("g")
-      .attr("transform", `translate(0,${usableArea.height})`)
-      .call(d3.axisBottom(x));
+    .selectAll("rect")
+    .data(histogramData)
+    .enter().append("rect")
+    .attr("x", d => x(d.hour))
+    .attr("y", d => y(d.avgGlucose))
+    .attr("width", x.bandwidth())
+    .attr("height", d => usableArea.height - y(d.avgGlucose))
+    .attr("fill", "steelblue");
 
-  // Add Y-axis
+  // X-axis
   svg.append("g")
-      .call(d3.axisLeft(y));
+    .attr("transform", `translate(0,${usableArea.height})`)
+    .call(d3.axisBottom(x).tickFormat(d => `${d}:00`));
+
+  // Y-axis
+  svg.append("g")
+    .call(d3.axisLeft(y));
 }
 
