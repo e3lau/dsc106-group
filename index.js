@@ -4,6 +4,9 @@ async function loadCSV(filePath) {
   return await d3.csv(filePath);
 }
 
+/// Currupted Data Skip
+const skipIds = [3, 7, 13, 15, 16];
+
 const dexcoms = {};
 const foodLogs = {};
 const formatDate = d3.timeFormat("%Y-%m-%d");
@@ -15,7 +18,7 @@ const formatHour = d3.timeFormat("%H");
 
   // Load Dexcom data
   for (let i = 1; i <= 16; i++) {
-    if (i === 3) continue;
+    if (skipIds.includes(i)) continue;
     const id = i.toString().padStart(3, "0");
     let data = await loadCSV(`data/dexcom/Dexcom_${id}.csv`);
     data = data.slice(12);
@@ -31,7 +34,7 @@ const formatHour = d3.timeFormat("%H");
 
   // Load Food Logs
   for (let i = 1; i <= 16; i++) {
-    if (i === 3) continue;
+    if (skipIds.includes(i)) continue;
     const id = i.toString().padStart(3, "0");
     let data = await loadCSV(`data/food_log/Food_Log_${id}.csv`);
     
@@ -46,36 +49,16 @@ const formatHour = d3.timeFormat("%H");
         newRow[key] = oldValues[index];
       });
 
-      // Use Date.parse() to handle inconsistent date formats
-      /*
-      let parsedDate = Date.parse(newRow.date);
-      newRow.date = isNaN(parsedDate) ? new Date() : new Date(parsedDate);
-      */
-
       let parsedTimeBegin = Date.parse(newRow.time_begin);
       newRow.time_begin = isNaN(parsedTimeBegin) ? null : new Date(parsedTimeBegin);
-
-      // For time_of_day, if available, assume it's a time string; otherwise fallback to time_begin.
-      /*
-      if (newRow.time_of_day) {
-         newRow.time_of_day = new Date(`1970-01-01T${newRow.time_of_day}`);
-      } else if (newRow.time_begin) {
-         newRow.time_of_day = newRow.time_begin;
-      } else {
-         newRow.time_of_day = null;
-      }
-      */
       
       return newRow;
     });
     foodLogs[`id_${id}`] = data;
   }
-
-  console.log(formatDate(foodLogs['id_005'][0].time_begin));
-  console.log(formatHour(foodLogs['id_005'][0].time_begin));
   
   // For each subject’s food logs, group by day and set a new boolean flag,
-  // hasStandardBreakfast, to true if any entry on that day has "Standard Breakfast"
+  // hasStandardBreakfast, to true if any entry on that day has a "Standard Breakfast"
   const breakfastOptions = ["standard breakfast", "std breakfast", "frosted flakes", "corn flakes",
      "cornflakes", "frosted flake", "std bfast"];
   
@@ -89,31 +72,48 @@ const formatHour = d3.timeFormat("%H");
     });
   }
 
-  console.log("Food Log id_005 head:", foodLogs["id_005"].slice(0, 50));
+  console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 50));
   renderHistogram("id_001", dexcoms, foodLogs);
 })();
 
 ////// Render Overlapping Histogram with Tooltip and Legend //////
 function renderHistogram(person, dexcoms, foodLogs) {
-  if (!dexcoms[person] || dexcoms[person].length === 0) {
-    console.error("No data available for histogram.");
-    return;
-  }
+    /// Error Catcher if data does not exist for person id
+    if (!dexcoms[person] || dexcoms[person].length === 0) {
+        console.error("No data available for histogram.");
+        
+        let chartsContainer = document.getElementById("chart");
+        if (chartsContainer) {
+          const placeholderMessage = document.createElement('p');
+          placeholderMessage.textContent = 'No data available for this person id!';
+          placeholderMessage.style.color = 'red';
+          chartsContainer.appendChild(placeholderMessage);
+        } else {
+          console.warn("Chart container not found.");
+        }
+      
+        return;
+      }
 
   // Set up dimensions and margins
   const width = 1000;
   const height = 600;
-  const margin = { top: 20, right: 20, bottom: 40, left: 50 };
+  const margin = { top: 10, right: 10, bottom: 30, left: 20 };
   const usableArea = {
+    top: margin.top,
+    right: width - margin.right,
+    bottom: height - margin.bottom,
+    left: margin.left,
     width: width - margin.left - margin.right,
     height: height - margin.top - margin.bottom,
   };
 
   // Append SVG element and group for margins
-  const svg = d3.select('#chart')
+  const svg = d3
+    .select('#chart')
     .append('svg')
-    .attr('width', width)
-    .attr('height', height);
+    .attr('viewBox', `0 0 ${width} ${height}`)
+    .style('overflow', 'visible');
     
   const g = svg.append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);

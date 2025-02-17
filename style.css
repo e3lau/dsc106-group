@@ -17,10 +17,6 @@ body {
 
 input, textarea, button, select {
     font: inherit;
-    /* display: block;
-    width: 100%;
-    box-sizing: border-box;
-    margin-block-end: 15px; */
 }
 
 h1 {
@@ -30,4 +26,21 @@ h1 {
 h1, h2, h3, h4, h5, h6 {
     line-height: 1.1;
     text-wrap: balance;
+}
+
+/* svg styling */
+svg {
+    width: auto;
+    height: auto;
+    margin-block: 2em;
+    display: block;
+  
+    /* Do not clip shapes outside the viewBox */
+    overflow: visible;
+}
+
+#chart {
+    width: 100%;      /* Allow it to expand */
+    max-width: none;  /* Prevent it from shrinking */
+    overflow: visible;
 }
