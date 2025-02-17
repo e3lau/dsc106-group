@@ -77,7 +77,7 @@ const formatHour = d3.timeFormat("%H");
   // For each subject’s food logs, group by day and set a new boolean flag,
   // hasStandardBreakfast, to true if any entry on that day has "Standard Breakfast"
   const breakfastOptions = ["standard breakfast", "std breakfast", "frosted flakes", "corn flakes",
-     "cornflakes", "frosted flake"];
+     "cornflakes", "frosted flake", "std bfast"];
   
   for (let id in foodLogs) {
     const groups = d3.group(foodLogs[id], d => formatDate(d.time_begin));
@@ -90,7 +90,7 @@ const formatHour = d3.timeFormat("%H");
   }
 
   console.log("Food Log id_005 head:", foodLogs["id_005"].slice(0, 50));
-  renderHistogram("id_016", dexcoms, foodLogs);
+  renderHistogram("id_001", dexcoms, foodLogs);
 })();
 
 ////// Render Overlapping Histogram with Tooltip and Legend //////
@@ -136,7 +136,7 @@ function renderHistogram(person, dexcoms, foodLogs) {
   dexcoms[person].forEach(d => {
     const readingDate = d["Timestamp (YYYY-MM-DDThh:mm:ss)"];
     const day = formatDate(readingDate);
-    const hour = formatHour(readingDate);
+    const hour = +formatHour(readingDate); // Convert to number
     const glucose = +d["Glucose Value (mg/dL)"];
     if (!isNaN(glucose)) {
       if (breakfastMap[day]) {
