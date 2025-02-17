@@ -76,7 +76,8 @@ const formatHour = d3.timeFormat("%H");
   
   // For each subject’s food logs, group by day and set a new boolean flag,
   // hasStandardBreakfast, to true if any entry on that day has "Standard Breakfast"
-  const breakfastOptions = ["standard breakfast", "std breakfast", "frosted flakes", "corn flakes"];
+  const breakfastOptions = ["standard breakfast", "std breakfast", "frosted flakes", "corn flakes",
+     "cornflakes", "frosted flake"];
   
   for (let id in foodLogs) {
     const groups = d3.group(foodLogs[id], d => formatDate(d.time_begin));
@@ -88,7 +89,7 @@ const formatHour = d3.timeFormat("%H");
     });
   }
 
-  console.log("Food Log id_001 head:", foodLogs["id_015"].slice(0, 50));
+  console.log("Food Log id_005 head:", foodLogs["id_005"].slice(0, 50));
   renderHistogram("id_016", dexcoms, foodLogs);
 })();
 
