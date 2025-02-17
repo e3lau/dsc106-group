@@ -80,8 +80,8 @@ const foodLogs = {};
   renderHistogram(dexcoms, foodLogs);
 })();
 
-////// Render Overlapping Histogram //////
 
+////// Render Overlapping Histogram //////
 function renderHistogram(dexcoms, foodLogs) {
   if (!dexcoms["id_001"] || dexcoms["id_001"].length === 0) {
     console.error("No data available for histogram.");
@@ -172,12 +172,18 @@ function renderHistogram(dexcoms, foodLogs) {
     .attr("class", "hourGroup")
     .attr("transform", d => `translate(${x0(d.hour)},0)`);
 
-  // In each hour group, draw both bars at the same x position.
-  // We sort so that the taller bar is drawn first (behind), and the shorter on top.
+  // In each hour group, create an array for both category values.
   hourGroups.each(function(d) {
+    // Create array of objects for both categories.
     const dataArray = categories.map(cat => ({ category: cat, value: d[cat] }));
-    dataArray.sort((a, b) => b.value - a.value); // taller bar first
-
+    // Sort descending so that the taller bar is drawn first (at the back).
+    dataArray.sort((a, b) => b.value - a.value);
+    
+    // Check if both categories have nonzero values.
+    const bothPresent = dataArray.every(obj => obj.value > 0);
+    
+    // Append the bars; use the original color for the taller bar.
+    // For the top (shorter) bar, if both are present (i.e., overlapping), use grey.
     d3.select(this).selectAll("rect")
       .data(dataArray)
       .enter()
@@ -186,8 +192,14 @@ function renderHistogram(dexcoms, foodLogs) {
       .attr("y", d => y(d.value))
       .attr("width", x0.bandwidth())
       .attr("height", d => usableArea.height - y(d.value))
-      .attr("fill", d => d.category === "standard" ? "steelblue" : "orange")
-      .attr("opacity", 0.88);
+      .attr("fill", (d, i) => {
+        if (bothPresent && i === 1) {
+          return "grey";
+        } else {
+          return d.category === "standard" ? "steelblue" : "orange";
+        }
+      })
+      .attr("opacity", 1);
   });
 
   // Add x-axis (hours) and y-axis (average glucose).
