@@ -4,6 +4,13 @@ async function loadCSV(filePath) {
   return await d3.csv(filePath);
 }
 
+// Person ID Replacement IDs
+const personLabels = {
+  "id_001": "Alice",
+  "id_002": "Bob",
+  "id_004": "Charlie"
+};
+
 /// Corrupted Data Skip
 const skipIDs = [3, 7, 13, 15, 16];
 
@@ -73,7 +80,16 @@ const formatHour = d3.timeFormat("%H");
   }
 
   console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 50));
-  renderHistogram(["id_001","id_002","id_010"], dexcoms, foodLogs);
+  //renderHistogram(["id_001","id_002","id_010"], dexcoms, foodLogs);
+
+  // Initialize the dropdown and histogram
+  createDropdown();
+  updateHistogram();
+
+  document.getElementById('dropdownButton').addEventListener('click', function() {
+    const dropdown = document.getElementById("personDropdown");
+    dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
+  });
 })();
 
 ////// Render Overlapping Histogram with Tooltip and Legend //////
@@ -320,4 +336,34 @@ function renderHistogram(persons, dexcoms, foodLogs) {
       .text(d => d.label)
       .attr("font-size", "14px")
       .attr("fill", "#000");
+}
+
+///// DROP DOWN & Filtering functions
+function createDropdown() {
+  const dropdown = document.getElementById("personDropdown");
+  dropdown.innerHTML = "";
+
+  Object.keys(dexcoms).forEach(id => {
+      const labelText = personLabels[id] || id;
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" value="${id}" class="personCheckbox" checked> ${labelText}`;
+      dropdown.appendChild(label);
+  });
+
+  document.querySelectorAll(".personCheckbox").forEach(checkbox => {
+      checkbox.addEventListener("change", updateHistogram);
+  });
+}
+
+function updateHistogram() {
+  const selectedPersons = [...document.querySelectorAll(".personCheckbox:checked")]
+      .map(cb => cb.value);
+
+  d3.select("#chart").html("");
+
+  if (selectedPersons.length > 0) {
+      renderHistogram(selectedPersons, dexcoms, foodLogs);
+  } else {
+      console.log("No persons selected.");
+  }
 }
