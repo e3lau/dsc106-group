@@ -73,7 +73,7 @@ const formatHour = d3.timeFormat("%H");
   }
 
   console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 50));
-  renderHistogram(["id_001","id_002","id_010"], dexcoms, foodLogs);
+  renderHistogram(["id_011"], dexcoms, foodLogs);
 })();
 
 ////// Render Overlapping Histogram with Tooltip and Legend //////
@@ -129,7 +129,7 @@ function renderHistogram(persons, dexcoms, foodLogs) {
   const svg = d3
     .select('#chart')
     .append('svg')
-    .attr('viewBox', `0 0 ${width} ${height}`)
+    .attr('viewBox', `-10 0 ${width} ${height}`)
     .style('overflow', 'visible');
     
   const g = svg.append("g")
@@ -268,8 +268,8 @@ function renderHistogram(persons, dexcoms, foodLogs) {
          tooltip.transition().duration(200).style("opacity", 0.9);
          tooltip.html(
            `<strong>Hour:</strong> ${parentData.hour}:00<br/>
-            <strong>Glucose (mg/dL):</strong><br/>Standard: ${parentData.standard.toFixed(2)}<br/>Nonstandard: ${parentData.nonstandard.toFixed(2)}<br/>
-            <strong>Fat:</strong><br/>Standard: ${parentData.fatStandard.toFixed(2)}<br/>Nonstandard: ${parentData.fatNonstandard.toFixed(2)}`
+            <strong>Glucose (mg/dL):</strong><br/>Standard: ${parentData.standard.toFixed(2)}<br/>Self-Chosen: ${parentData.nonstandard.toFixed(2)}<br/>
+            <strong>Fat:</strong><br/>Standard: ${parentData.fatStandard.toFixed(2)}<br/>Self-Chosen: ${parentData.fatNonstandard.toFixed(2)}`
          )
          .style("left", (event.pageX + 10) + "px")
          .style("top", (event.pageY - 28) + "px");
@@ -288,36 +288,52 @@ function renderHistogram(persons, dexcoms, foodLogs) {
     .attr("transform", `translate(0,${usableArea.height})`)
     .call(d3.axisBottom(x0).tickFormat(d => `${d}:00`));
 
-  g.append("g")
-    .call(d3.axisLeft(y));
+  g.append("g").call(d3.axisLeft(y));
+  
+  // add axis labels
+  svg.append("text")
+    .attr("x", width / 2)
+    .attr("y", height + margin.bottom - 10)
+    .attr("text-anchor", "middle")
+    .style("font-size", "14px")
+    .text("Hour of Day"); // X-axis label
+  
+  svg.append("text")
+    .attr("transform", "rotate(-90)")
+    .attr("x", -height / 2)
+    .attr("y", -margin.left + 20)
+    .attr("text-anchor", "middle")
+    .style("font-size", "14px")
+    .text("Average Glucose Level (mg/dL)"); // Y-axis label
 
   // --- Add an offset legend ---
   // Position the legend towards the top-right of the SVG.
-  const legend = svg.append("g")
-      .attr("transform", `translate(${width - 150},${margin.top})`);
+  const legendWidth = 478; // Adjust based on total width needed for legend items
+    const legendX = (width - legendWidth) / 2 + margin.left; // Centers legend within chart area
+
+    const legend = svg.append("g")
+        .attr("transform", `translate(${legendX}, ${height + margin.bottom - 650})`); // Moves legend below the chart
 
   const legendData = [
-      { label: "Standard", color: "steelblue" },
-      { label: "Nonstandard", color: "orange" }
+      { label: "Standard Breakfast Days", color: "steelblue" },
+      { label: "Self-Chosen Breakfast Days", color: "orange" }
   ];
 
-  legend.selectAll("rect")
-      .data(legendData)
-      .enter()
-      .append("rect")
-      .attr("x", 0)
-      .attr("y", (d, i) => i * 25)
-      .attr("width", 20)
-      .attr("height", 20)
-      .attr("fill", d => d.color);
+  const legendItems = legend.selectAll("g")
+    .data(legendData)
+    .enter()
+    .append("g")
+    .attr("transform", (d, i) => `translate(${i * 200}, 0)`); // Adjusts x-position for spacing
 
-  legend.selectAll("text")
-      .data(legendData)
-      .enter()
-      .append("text")
-      .attr("x", 30)
-      .attr("y", (d, i) => i * 25 + 15)
-      .text(d => d.label)
-      .attr("font-size", "14px")
-      .attr("fill", "#000");
+    legendItems.append("rect")
+        .attr("width", 20)
+        .attr("height", 20)
+        .attr("fill", d => d.color);
+
+    legendItems.append("text")
+        .attr("x", 30)
+        .attr("y", 15)
+        .text(d => d.label)
+        .attr("font-size", "14px")
+        .attr("fill", "#000");
 }
