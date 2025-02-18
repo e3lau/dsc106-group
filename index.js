@@ -6,9 +6,22 @@ async function loadCSV(filePath) {
 
 // Person ID Replacement IDs
 const personLabels = {
-  "id_001": "Alice",
-  "id_002": "Bob",
-  "id_004": "Charlie"
+  "id_001": "ID_1",
+  "id_002": "ID_2",
+  "id_003": "ID_3",
+  "id_004": "ID_4",
+  "id_005": "ID_5",
+  "id_006": "ID_6",
+  "id_007": "ID_7",
+  "id_008": "ID_8",
+  "id_009": "ID_9",
+  "id_010": "ID_10",
+  "id_011": "ID_11",
+  "id_012": "ID_12",
+  "id_013": "ID_13",
+  "id_014": "ID_14",
+  "id_015": "ID_15",
+  "id_016": "ID_16",
 };
 
 /// Corrupted Data Skip
@@ -182,28 +195,7 @@ function renderHistogram(persons, dexcoms, foodLogs) {
     }
   });
 
-  // --- Compute average fat consumption per hour from food log data ---
-  const standardFatSums = Array(24).fill(0);
-  const standardFatCounts = Array(24).fill(0);
-  const nonStandardFatSums = Array(24).fill(0);
-  const nonStandardFatCounts = Array(24).fill(0);
-
-  foodLogData.forEach(d => {
-      // Convert total_fat to number if possible.
-      const fat = +d.total_fat;
-      if (!isNaN(fat) && d.time_begin) {
-         const hour = formatHour(d.time_begin);
-         if (d.hasStandardBreakfast) {
-            standardFatSums[hour] += fat;
-            standardFatCounts[hour] += 1;
-         } else {
-            nonStandardFatSums[hour] += fat;
-            nonStandardFatCounts[hour] += 1;
-         }
-      }
-  });
-
-  // Compute average values for each hour for both glucose and fat.
+  // Compute average values for each hour for both glucose.
   const histogramData = [];
   for (let h = 0; h < 24; h++) {
     histogramData.push({
@@ -211,9 +203,6 @@ function renderHistogram(persons, dexcoms, foodLogs) {
       // Glucose averages:
       standard: standardCounts[h] > 0 ? standardSums[h] / standardCounts[h] : 0,
       nonstandard: nonStandardCounts[h] > 0 ? nonStandardSums[h] / nonStandardCounts[h] : 0,
-      // Fat averages:
-      fatStandard: standardFatCounts[h] > 0 ? standardFatSums[h] / standardFatCounts[h] : 0,
-      fatNonstandard: nonStandardFatCounts[h] > 0 ? nonStandardFatSums[h] / nonStandardFatCounts[h] : 0,
     });
   }
 
@@ -284,8 +273,7 @@ function renderHistogram(persons, dexcoms, foodLogs) {
          tooltip.transition().duration(200).style("opacity", 0.9);
          tooltip.html(
            `<strong>Hour:</strong> ${parentData.hour}:00<br/>
-            <strong>Glucose (mg/dL):</strong><br/>Standard: ${parentData.standard.toFixed(2)}<br/>Self-Chosen: ${parentData.nonstandard.toFixed(2)}<br/>
-            <strong>Fat:</strong><br/>Standard: ${parentData.fatStandard.toFixed(2)}<br/>Self-Chosen: ${parentData.fatNonstandard.toFixed(2)}`
+            <strong>Glucose (mg/dL):</strong><br/>Standard: ${parentData.standard.toFixed(2)}<br/>Self-Chosen: ${parentData.nonstandard.toFixed(2)}<br/>`
          )
          .style("left", (event.pageX + 10) + "px")
          .style("top", (event.pageY - 28) + "px");
@@ -312,6 +300,7 @@ function renderHistogram(persons, dexcoms, foodLogs) {
     .attr("y", height + margin.bottom - 10)
     .attr("text-anchor", "middle")
     .style("font-size", "14px")
+    .style("font-weight", "bold")
     .text("Hour of Day"); // X-axis label
   
   svg.append("text")
@@ -320,6 +309,7 @@ function renderHistogram(persons, dexcoms, foodLogs) {
     .attr("y", -margin.left + 20)
     .attr("text-anchor", "middle")
     .style("font-size", "14px")
+    .style("font-weight", "bold")
     .text("Average Glucose Level (mg/dL)"); // Y-axis label
 
   // --- Add an offset legend ---
@@ -375,11 +365,41 @@ function updateHistogram() {
   const selectedPersons = [...document.querySelectorAll(".personCheckbox:checked")]
       .map(cb => cb.value);
 
+  const chartSubtitleCount = document.querySelector('.chart-subtitle-count');
+
+  // Convert selected IDs to corresponding names
+  const selectedNames = selectedPersons.map(id => personLabels[id] || id);
+
+  // Format names with ", and" before the last element
+  let formattedNames = "";
+  if (selectedNames.length === 1) {
+    formattedNames = selectedNames[0];
+  } else if (selectedNames.length === 2) {
+    formattedNames = selectedNames.join(" and ");
+  } else if (selectedNames.length > 2) {
+    formattedNames = selectedNames.slice(0, -1).join(", ") + ", and " + selectedNames[selectedNames.length - 1];
+  }
+
+  // Update the text content with the formatted names
+  chartSubtitleCount.textContent = formattedNames;
+
+
+
   d3.select("#chart").html("");
 
   if (selectedPersons.length > 0) {
       renderHistogram(selectedPersons, dexcoms, foodLogs);
   } else {
+    let chartsContainer = document.getElementById("chart");
+    if (chartsContainer) {
+      const placeholderMessage = document.createElement('p');
+      placeholderMessage.textContent = 'No Persons Selected!';
+      placeholderMessage.style.color = 'red';
+      chartsContainer.appendChild(placeholderMessage);
+      chartSubtitleCount.textContent = "NULL"
       console.log("No persons selected.");
+    } else {
+      console.warn("Chart container not found.");
+    }
   }
 }
