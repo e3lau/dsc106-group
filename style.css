@@ -70,3 +70,12 @@ svg {
     margin-bottom: 40px;
     margin-top: 0px;
 }
+
+#source {
+    text-align: center;
+    font-size: 10px;
+}
+
+.check-boxes {
+    text-align: center;
+}
