@@ -350,7 +350,7 @@ function renderHistogram(persons, dexcoms, foodLogs, includeStandard, includeNon
     .data(legendData)
     .enter()
     .append("g")
-    .attr("transform", (d, i) => `translate(${i * 250}, 0)`);
+    .attr("transform", (d, i) => `translate(${i * 225}, 0)`);
 
   legendItems.append("rect")
       .attr("width", 20)
