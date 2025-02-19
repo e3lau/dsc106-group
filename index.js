@@ -339,13 +339,13 @@ function renderHistogram(persons, dexcoms, foodLogs, includeStandard, includeNon
     legendData.push({ label: "Overlap", color: overlapColor });
   }
   
-  const legendWidth = 478;
-  const legendX = (width - legendWidth) / 2 + margin.left;
-
+  // Center the legend horizontally based on the number of items.
+  const legendX = width / 2 - ((legendData.length * 180) / 2);
+  
   const legend = svg.append("g")
       .attr("transform", `translate(${legendX}, ${height + margin.bottom - 650})`);
 
-  // Increase spacing between legend groups by using 250px spacing instead of 200px.
+  // Legend items with a spacing of 225px between groups.
   const legendItems = legend.selectAll("g")
     .data(legendData)
     .enter()
