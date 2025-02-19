@@ -145,7 +145,6 @@
     margin-top: 20px;
     padding: 10px;
     border-top: 1px solid #ddd;
-    /* Ensure vertical stacking */
     display: flex;
     flex-direction: column;
     gap: 5px;

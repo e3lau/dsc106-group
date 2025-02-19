@@ -75,10 +75,10 @@ const formatHour = d3.timeFormat("%H");
     foodLogs[`id_${id}`] = data;
   }
   
-  // For each subject’s food logs, group by day and create a flag,
-  // `hasStandardBreakfast`, if any entry on that day uses a standard breakfast option.
+  // For each subject’s food logs, group by day and create a flag
+  // hasStandardBreakfast if any entry on that day uses a standard breakfast option.
   const breakfastOptions = ["standard breakfast", "std breakfast", "frosted flakes", "corn flakes",
-     "cornflakes", "frosted flake", "std bfast"];
+                            "cornflakes", "frosted flake", "std bfast"];
   
   for (let id in foodLogs) {
     const groups = d3.group(foodLogs[id], d => formatDate(d.time_begin));
@@ -92,7 +92,7 @@ const formatHour = d3.timeFormat("%H");
 
   console.log("Food Log id_001 head:", foodLogs["id_001"].slice(0, 50));
   
-  // Initialize the dropdown and histogram
+  // Initialize dropdown and histogram
   createDropdown();
   updateHistogram();
 
@@ -101,7 +101,7 @@ const formatHour = d3.timeFormat("%H");
     dropdown.style.display = dropdown.style.display === "block" ? "none" : "block";
   });
 
-  // Listen for breakfast type toggle changes
+  // Listen for breakfast toggle changes
   document.getElementById("toggleStandard").addEventListener("change", updateHistogram);
   document.getElementById("toggleNonStandard").addEventListener("change", updateHistogram);
 })();
@@ -149,7 +149,7 @@ function renderHistogram(persons, dexcoms, foodLogs, includeStandard, includeNon
     height: height - margin.top - margin.bottom,
   };
 
-  // Clear previous chart content
+  // Clear any previous chart content.
   const chartContainer = d3.select("#chart");
   chartContainer.html("");
 
@@ -160,7 +160,7 @@ function renderHistogram(persons, dexcoms, foodLogs, includeStandard, includeNon
   const g = svg.append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
-  // Create a day-to-breakfast flag mapping for the food logs.
+  // Map each day to a breakfast flag.
   const breakfastMap = {};
   combinedFoodLogData.forEach(d => {
     const day = formatDate(d.time_begin);
@@ -249,23 +249,35 @@ function renderHistogram(persons, dexcoms, foodLogs, includeStandard, includeNon
     .attr("class", "hourGroup")
     .attr("transform", d => `translate(${x0(d.hour)},0)`);
 
+  // Define a variable for the overlap color (change this value to your desired color)
+  const overlapColor = "#999999";
+
   hourGroups.each(function(d) {
     const dataArray = categories.map(cat => ({ category: cat, value: d[cat] }));
-    if(dataArray.length > 1) {
-      dataArray.sort((a, b) => b.value - a.value);
-    }
+    // Sort descending so the taller bar is drawn first.
+    dataArray.sort((a, b) => b.value - a.value);
+    
+    // If both types are present, mark the second bar as "overlap" (using the overlapColor variable)
+    const bothPresent = (includeStandard && includeNonstandard) &&
+                        dataArray.every(obj => obj.value > 0);
     
     d3.select(this).selectAll("rect")
       .data(dataArray)
       .enter()
       .append("rect")
       .attr("x", 0)
-      .attr("y", d => y(d.value))
+      .attr("y", d_item => y(d_item.value))
       .attr("width", x0.bandwidth())
-      .attr("height", d => usableArea.height - y(d.value))
-      .attr("fill", d => d.category === "standard" ? "steelblue" : "orange")
+      .attr("height", d_item => usableArea.height - y(d_item.value))
+      .attr("fill", (d_item, i) => {
+          if (bothPresent && i === 1) {
+              return overlapColor;
+          } else {
+              return d_item.category === "standard" ? "steelblue" : "orange";
+          }
+      })
       .attr("opacity", 1)
-      .on("mouseover", function(event, d_cat) {
+      .on("mouseover", function(event, d_item) {
          const parentData = d3.select(this.parentNode).datum();
          tooltip.transition().duration(200).style("opacity", 0.9);
          let tooltipHTML = `<strong>Hour:</strong> ${parentData.hour}:00<br/>`;
@@ -314,13 +326,17 @@ function renderHistogram(persons, dexcoms, foodLogs, includeStandard, includeNon
     .style("font-weight", "bold")
     .text("Average Glucose Level (mg/dL)");
 
-  // Legend (only include selected categories)
+  // Construct legend data.
   const legendData = [];
   if (includeStandard) {
     legendData.push({ label: "Standard Breakfast Days", color: "steelblue" });
   }
   if (includeNonstandard) {
     legendData.push({ label: "Self-Chosen Breakfast Days", color: "orange" });
+  }
+  // Add a third legend item for overlap if both toggles are enabled.
+  if (includeStandard && includeNonstandard) {
+    legendData.push({ label: "Overlap", color: overlapColor });
   }
   
   const legendWidth = 478;
@@ -329,11 +345,12 @@ function renderHistogram(persons, dexcoms, foodLogs, includeStandard, includeNon
   const legend = svg.append("g")
       .attr("transform", `translate(${legendX}, ${height + margin.bottom - 650})`);
 
+  // Increase spacing between legend groups by using 250px spacing instead of 200px.
   const legendItems = legend.selectAll("g")
     .data(legendData)
     .enter()
     .append("g")
-    .attr("transform", (d, i) => `translate(${i * 200}, 0)`);
+    .attr("transform", (d, i) => `translate(${i * 250}, 0)`);
 
   legendItems.append("rect")
       .attr("width", 20)
@@ -380,7 +397,7 @@ function updateHistogram() {
   }
   chartSubtitleCount.textContent = formattedNames;
 
-  // Retrieve the breakfast toggle states.
+  // Retrieve breakfast toggle states.
   const includeStandard = document.getElementById("toggleStandard").checked;
   const includeNonstandard = document.getElementById("toggleNonStandard").checked;
 
