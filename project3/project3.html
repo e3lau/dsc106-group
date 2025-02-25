@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DSC 106 Project 3 Interactive Graph</title>
+    <link rel="stylesheet" href="../style.css" />
+</head>
+
+<body>
+    <h1 id="page-title">Visulogic's Project 3 Graph</h1>
+    <div class="description">
+        <p>By: Adam Cross, Ethan Lau, and Roham Mehrabi</p>
+    </div>
+    <br />
+    <h3 id="chart-title">
+        Breakfast &amp; Blood Sugar: Exploring Daily Glucose Responses to Standardized vs. Self-Chosen Breakfasts
+    </h3>
+    <h4 id="chart-subtitle">
+        Average Glucose Levels by Hour for <span class="chart-subtitle-count">NULL</span>
+    </h4>
+
+    <!-- Chart Wrapper centers the graph and positions the sidebar to the right -->
+    <div class="chart-wrapper">
+        <div id="chart">
+            <!-- D3 will render the graph here -->
+        </div>
+        <div class="sidebar">
+            <div class="check-boxes">
+                <!-- Persons dropdown -->
+                <div id="personDropdownContainer" class="dropdown">
+                    <button id="dropdownButton">Select Persons ▼</button>
+                    <div id="personDropdown" class="dropdown-content"></div>
+                </div>
+                <!-- Breakfast toggle checkboxes -->
+                <div class="toggle-breakfast">
+                    <h4>Breakfast Type</h4>
+                    <label>
+                        <input type="checkbox" id="toggleStandard" checked> Standard Breakfast
+                    </label>
+                    <label>
+                        <input type="checkbox" id="toggleNonStandard" checked> Self-Chosen Breakfast
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br />
+    <p id="source">
+        Data Source:
+        <a href="https://physionet.org/content/big-ideas-glycemic-wearable/1.1.2/" target="_blank">
+            BIG IDEAs Lab Glycemic Variability and Wearable Device Data
+        </a>
+    </p>
+
+    <!-- JavaScript Files -->
+    <script src="project3.js" type="module" defer></script>
+    <!-- Import D3 -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</body>
+
+</html>
